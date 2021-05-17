@@ -1,8 +1,8 @@
 import struct
 import copy
 
-import DemoParserCSGO.consts as c
-from DemoParserCSGO.ByteReader import Bytebuffer
+from . import consts as c
+from .ByteReader import Bytebuffer
 
 
 def printDic(dic,ident=0):

@@ -1,7 +1,7 @@
 import math
 import struct
 
-import DemoParserCSGO.consts as c
+from . import consts as c
 
 
 class Bitbuffer:

@@ -1,12 +1,12 @@
 import math
 import threading as t
 
-import DemoParserCSGO.NETMSG_pb2 as pbuf
-import DemoParserCSGO.PrintStuff as p
-import DemoParserCSGO.consts as c
-from DemoParserCSGO.BitReader import Bitbuffer
-from DemoParserCSGO.ByteReader import Bytebuffer
-from DemoParserCSGO.structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity
+from . import NETMSG_pb2 as pbuf
+from . import PrintStuff as p
+from . import consts as c
+from .BitReader import Bitbuffer
+from .ByteReader import Bytebuffer
+from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity
 
 
 class DemoParser:

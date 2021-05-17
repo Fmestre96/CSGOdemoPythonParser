@@ -3,14 +3,38 @@ import DemoParserCSGO.DemoParser as dp
 match_started = False
 round_current = 1
 max_players = 10
-PLAYERS_BY_UID = dict()
+PLAYERS = dict()
 tickrate = 0
 current_tick = 0
-file = None
 sec_threshold = 0
 round_start_tick = 0
 round_timer = 0
 max_round_time = 115
+
+def printDic(dic,ident=0):
+    sBuffer = ''
+    if isinstance(dic,dict):
+        for key, value in dic.items():
+            if not (isinstance(value,list) or isinstance(value,dict)):
+                sBuffer += ' '*ident + str(key) + ': '+ str(value) + '\n'
+            else:
+                sBuffer += ' '*ident + str(key) + ': '  + '\n'
+                sBuffer += printDic(value,ident+5)
+        
+    elif isinstance(dic,list):
+        for i in dic:
+            sBuffer += printDic(i,ident)
+            if len(dic)== 0 or (isinstance(i,list) or isinstance(i,dict)) :
+                sBuffer += ' '* ident + '---------------------'  + '\n'
+    elif isinstance(dic,str):
+        sBuffer += ' ' * ident + dic  + '\n'
+    elif isinstance(dic,int) or isinstance(dic,float) or isinstance(dic,complex):
+        sBuffer += ' ' * ident + str(dic)  + '\n'
+    else:
+        sBuffer += printDic(dic.__dict__,ident)
+    
+    return sBuffer
+
 
 def analyze_demo(path):
     file = open(path, "rb")
@@ -35,9 +59,12 @@ def analyze_demo(path):
     parser.parse()
 
 
+def getTime(round_timer):
+    return "{}:{}".format(int(round_timer / 60), str(int(round_timer % 60)).zfill(2))
+
 def player_blind(data):
-    v = PLAYERS_BY_UID.get(data["userid"])
-    a = PLAYERS_BY_UID.get(data["attacker"])
+    v = PLAYERS.get(data["userid"])
+    a = PLAYERS.get(data["attacker"])
     time = round(data["blind_duration"], 2)
     if not v or not a:
         return
@@ -48,53 +75,37 @@ def player_blind(data):
         v.lastflashdur = time
         v.lastflashtick = current_tick
         if v.start_team == a.start_team:
-            if max_round_time == 40:
-                print("BOMB ")
-            print("{}:{} / ".format(int(round_timer / 60), str(int(round_timer % 60)).zfill(2)))
-            print("Team Flash > {} flashed {} for {}s\n".format(a.name, v.name, time))
             a.teamflashes += 1
             a.teamflashesduration += time
         else:
-            if max_round_time == 40:
-                print("BOMB ")
-            print("{}:{} / ".format(int(round_timer / 60), str(int(round_timer % 60)).zfill(2)))
-            print("Enemy Flash > {} flashed {} for {}s\n".format(a.name, v.name, time))
             a.enemyflashes += 1
             a.enemyflashesduration += time
 
 
 def player_death(data):
     if match_started:
-        d = PLAYERS_BY_UID.get(data["userid"])
+        d = PLAYERS.get(data["userid"])
         if not d:
             return
         d.dead = True
         if not d.flashedby:
             return
         if d.start_team == d.flashedby.start_team:
-            if max_round_time == 40:
-                print("BOMB ")
-            print("{}:{} / ".format(int(round_timer / 60), str(int(round_timer % 60)).zfill(2)))
-            print("Team Death > {} died flashed by {}\n".format(d.name, d.flashedby.name))
             d.flashedby.ftotd.append(round_current)
         else:
-            if max_round_time == 40:
-                print("BOMB ")
-            print("{}:{} / ".format(int(round_timer / 60), str(int(round_timer % 60)).zfill(2)))
-            print("Enemy Death > {} died flashed by {}\n".format(d.name, d.flashedby.name))
             d.flashedby.ftoed.append(round_current)
 
 
 def player_team(data):
-    global PLAYERS_BY_UID, max_players, round_current
-    # trying to find out player teams (and bots, mainly bots here) since i'm not parsing entities
-    # if data["isbot"]:
-    #     print("bot {} joined team {} / disc= {}".format(data["userid"], data["team"], data["disconnect"]))
-    # else:
-    #     print("player {} joined team {} / disc= {}".format(data["userid"], data["team"], data["disconnect"]))
+    global PLAYERS, max_players, round_current
+    #trying to find out player teams (and bots, mainly bots here) since i'm not parsing entities
+    if data["isbot"]:
+        print("bot {} joined team {} / disc= {}".format(data["userid"], data["team"], data["disconnect"]))
+    else:
+        print("player {} joined team {} / disc= {}".format(data["userid"], data["team"], data["disconnect"]))
     if data["team"] == 0 or data["isbot"]:
         return
-    rp = PLAYERS_BY_UID.get(data["userid"])
+    rp = PLAYERS.get(data["userid"])
     if rp and rp.start_team is None:
         if max_players == 10:
             if round_current <= 15:
@@ -117,11 +128,11 @@ def player_team(data):
 
 
 def player_spawn(data):
-    global PLAYERS_BY_UID, max_players, round_current
+    global PLAYERS, max_players, round_current
     # trying to find out player teams since i'm not parsing entities
     if data["teamnum"] == 0:
         return
-    rp = PLAYERS_BY_UID.get(data["userid"])
+    rp = PLAYERS.get(data["userid"])
     if rp and rp.start_team is None:
         if max_players == 10:
             if round_current <= 15:
@@ -144,63 +155,59 @@ def player_spawn(data):
 
 
 def begin_new_match(data):
-    global match_started, file
+    global match_started
     if match_started:
         _reset_pstats()
     match_started = True
     print("\nMATCH STARTED.....................................................................\n")
-    # print("MATCH STARTED.....................................................................")
-
 
 def round_officially_ended(data):
-    global match_started, round_current, file, max_round_time
+    global match_started, round_current, max_round_time
     if match_started:
         # STATS.update({round_current: MyRoundStats(team_score[2], team_score[3], PLAYERS)})
         round_current += 1
         max_round_time = 115
-        for p in PLAYERS_BY_UID.values():
+        for p in PLAYERS.values():
             if p:
                 p.dead = False
     print("\nROUND {}..........................................................\n".format(round_current))
-    # print("ROUND {}..........................................................".format(round_current))
 
 
 def match_ended(data):
-    global file
     print("\nMATCH ENDED.....................................................................\n")
 
 
 def _reset_pstats():
-    global PLAYERS_BY_UID
-    for p2 in PLAYERS_BY_UID.values():
+    global PLAYERS
+    for p2 in PLAYERS.values():
         p2.start_team = None
 
 
 def update_pinfo(data):
-    global PLAYERS_BY_UID, max_players
+    global PLAYERS, max_players
     if data.guid != "BOT":
         exist = None
-        for x in PLAYERS_BY_UID.items():
+        for x in PLAYERS.items():
             if data.xuid == x[1].userinfo.xuid:
                 exist = x[0]
                 break
         if exist:
-            PLAYERS_BY_UID[exist].update(data, ui=True)
+            PLAYERS[exist].update(data, ui=True)
             if exist != data.user_id:
-                PLAYERS_BY_UID.update({data.user_id: PLAYERS_BY_UID[exist]})
-                PLAYERS_BY_UID.pop(exist)
+                PLAYERS.update({data.user_id: PLAYERS[exist]})
+                PLAYERS.pop(exist)
         else:
-            PLAYERS_BY_UID.update({data.user_id: MyPlayer(data, ui=True)})
-        max_players = len(PLAYERS_BY_UID)
+            PLAYERS.update({data.user_id: MyPlayer(data, ui=True)})
+        max_players = len(PLAYERS)
 
 
 def new_demo(data):
-    global match_started, round_current, PLAYERS_BY_UID, tickrate, current_tick
+    global match_started, round_current, PLAYERS, tickrate, current_tick
     current_tick = 0
     tickrate = int(data.ticks / data.playback_time)
     match_started = False
     round_current = 1
-    PLAYERS_BY_UID = dict()
+    PLAYERS = dict()
 
 
 def round_fr_end(data):
@@ -220,29 +227,9 @@ def hostage_follows(data):
 
 
 def print_end_stats(data):
-    global file
-    data1 = sorted(PLAYERS_BY_UID.values(), key=lambda x: x.teamflashesduration, reverse=True)
-    data2 = sorted(PLAYERS_BY_UID.values(), key=lambda x: x.enemyflashesduration, reverse=True)
-    print("\nTEAM FLASH STATS:\n\n")
-    for p in data1:
-        print("{} blinded teammates {} ".format(fix_len_string(p.name, 20), fix_len_string(p.teamflashes, 2)))
-        print("times for {}s ".format(fix_len_string(round(p.teamflashesduration, 2), 5)))
-        print("resulting in {} team deaths".format(fix_len_string(len(p.ftotd), 2)))
-        if len(p.ftotd):
-            print(" in rounds: ")
-            for r in p.ftotd:
-                print("{}, ".format(r))
-        print("\n")
-    print("\nENEMY FLASH STATS:\n\n")
-    for p in data2:
-        print("{} blinded enemies {} ".format(fix_len_string(p.name, 20), fix_len_string(p.enemyflashes, 2)))
-        print("times for {}s ".format(fix_len_string(round(p.enemyflashesduration, 2), 5)))
-        print("resulting in {} enemy deaths".format(fix_len_string(len(p.ftoed), 2)))
-        if len(p.ftoed):
-            print(" in rounds: ")
-            for r in p.ftoed:
-                print("{}, ".format(r))
-        print("\n")
+    for p in PLAYERS.values():
+        print(p)
+    print("End Stats would go here")
 
 
 def get_entities(data):
@@ -251,7 +238,7 @@ def get_entities(data):
     # PLAYER_ENTITIES.clear()
     current_tick = data
     round_timer = round(max_round_time - ((current_tick - round_start_tick) / tickrate), 2)
-    for p in PLAYERS_BY_UID.values():
+    for p in PLAYERS.values():
         # PLAYER_ENTITIES.update({p.userinfo.entity_id: data[0].get(p.userinfo.entity_id)})
         # if PLAYER_ENTITIES.get(p.userinfo.entity_id) and PLAYER_ENTITIES[p.userinfo.entity_id].get_prop("m_flFlashMaxAlpha"):
         #     print("alpha", PLAYER_ENTITIES[p.userinfo.entity_id].get_prop("m_flFlashMaxAlpha"))
@@ -282,6 +269,9 @@ def fix_len_string(text, le):
 
 class MyPlayer:
     def __init__(self, data=None, ui=False):
+        self.k = 0
+        self.d = 0
+        self.a = 0
         self.teamflashes = 0
         self.enemyflashes = 0
         self.teamflashesduration = 0
@@ -308,6 +298,11 @@ class MyPlayer:
             self.name = data.name
             self.profile = "https://steamcommunity.com/profiles/" + str(data.xuid)
 
+    def print(self):
+        printDic(self)
+
+    def __str__(self) :
+        return printDic(self)
 
 if __name__ == "__main__":
     analyze_demo('4675b31d-9b6c-4411-9997-156f72325684.dem')

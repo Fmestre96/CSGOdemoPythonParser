@@ -131,7 +131,7 @@ class DemoParser:
             elif cmd == c.DEM_STOP:  # 7
                 self._sub_event("cmd_dem_stop", None)
                 # print(self.progress, "%  >DEMO ENDED<")
-                print("MATCH ENDED.....................................................................")
+                #print("MATCH ENDED.....................................................................")
                 demo_finished = True
             else:
                 demo_finished = True
@@ -349,7 +349,7 @@ class DemoParser:
         # pass
         self._match_started = True
         # self.opr = False
-        print("MATCH STARTED.....................................................................")
+        #print("MATCH STARTED.....................................................................")
 
     def _my_round_end(self, data):
         pass
@@ -363,7 +363,7 @@ class DemoParser:
             # self.opr = False
         # if self._round_current == 30:
         #     p.print_one_entity(self.dump, self.get_resource_table())
-        print("ROUND {}..........................................................".format(self._round_current))
+        #print("ROUND {}..........................................................".format(self._round_current))
 
     # NO MORE EVENTS HANDLERS <
 

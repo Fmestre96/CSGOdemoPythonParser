@@ -1,10 +1,5 @@
 import DemoParserCSGO.DemoParser as dp
-import os
-import inspect as i
 import tkinter as tk
-import tkinter.filedialog as tkfd
-import threading as t
-
 
 match_started = False
 round_current = 1
@@ -320,10 +315,6 @@ class MyPlayer:
             self.id = data.user_id
             self.name = data.name
             self.profile = "https://steamcommunity.com/profiles/" + str(data.xuid)
-
-
-
-thread = t.Thread()
 
 
 class MyButtonStyle:

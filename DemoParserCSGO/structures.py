@@ -5,30 +5,6 @@ from . import consts as c
 from .ByteReader import Bytebuffer
 
 
-def printDic(dic,ident=0):
-    sBuffer = ''
-    if isinstance(dic,dict):
-        for key, value in dic.items():
-            if not (isinstance(value,list) or isinstance(value,dict)):
-                sBuffer += ' '*ident + str(key) + ': '+ str(value) + '\n'
-            else:
-                sBuffer += ' '*ident + str(key) + ': '  + '\n'
-                sBuffer += printDic(value,ident+5)
-        
-    elif isinstance(dic,list):
-        for i in dic:
-            sBuffer += printDic(i,ident)
-            if len(dic)== 0 or (isinstance(i,list) or isinstance(i,dict)) :
-                sBuffer += ' '* ident + '---------------------'  + '\n'
-    elif isinstance(dic,str):
-        sBuffer += ' ' * ident + dic  + '\n'
-    elif isinstance(dic,int) or isinstance(dic,float) or isinstance(dic,complex):
-        sBuffer += ' ' * ident + str(dic)  + '\n'
-    else:
-        sBuffer += printDic(dic.__dict__,ident)
-    
-    return sBuffer
-
 class DemoHeader:
     """1072 Byte header for .DEM file.
 
@@ -187,9 +163,8 @@ class UserInfo:
         self.eid = None
         del buf
         
-    def __str__(self) :
-        return printDic(self)
-
+    def toDict(self):
+        return self.__dict__
 
 class StringTable:
     def __init__(self, msg):

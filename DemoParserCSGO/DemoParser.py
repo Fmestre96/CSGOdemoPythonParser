@@ -31,7 +31,7 @@ class DemoParser:
                 self._ent_set.add("CCSTeam")
                 self._ent_set.add("CCSPlayerResource")
                 self._ent_set.add("CCSGameRulesProxy")
-                if self._ent_set == "P+G":
+                if self._ent == "P+G":
                     self._ent_set.add("CBaseCSGrenadeProjectile")
         if dump:
             self.dump = open(dump, "w", encoding="utf-8")

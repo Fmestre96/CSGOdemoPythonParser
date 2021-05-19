@@ -1,29 +1,42 @@
 import DemoParserCSGO.DemoParser as dp
 import DemoParserCSGO.PrintStuff as hf
 
+verbose = True
+def printVerbose(s):
+    if verbose:
+        print(s)
 
 class Demo:
     def __init__(self,path):
         self.path = path
+        self.map = ""
+        self.service = "MM"
         self.match_started = False
+        self.match_paused = False
+        self.match_ended = False
         self.round_current = 1
         self.max_players = 10
         self.tickrate = 0
         self.current_tick = 0
-        self.sec_threshold = 0
         self.round_start_tick = 0
         self.round_timer = 0
         self.max_round_time = 115
-        self.PLAYERS = dict()
-        self.BOTS = dict()
-        self.takeovers = dict()
-        self.STATS = {"otherdata": {},'rounds':{}}
+        self.player_stats = dict()
+        self.round_stats = dict()
 
     def save_to_file(self, data):
         stats = {
-            'players': {k: v.toDict() for k,v in self.PLAYERS.items()},
-            'stats':{},
-            'takeovers':self.takeovers
+            'demo_info': {
+                'service': self.service,
+                'map': self.map,
+                'tickrate': self.tickrate,
+            },
+            'match_stats': {
+                'rounds': self.round_current,
+            },
+            'round_stats':{},
+            'player_stats': {v.name: v.toDict() for v in self.player_stats.values()},
+            
         }
         hf.saveJson(stats)
 
@@ -39,6 +52,7 @@ class Demo:
 
         #Connects
         parser.subscribe_to_event("gevent_player_team", self.player_team)
+        parser.subscribe_to_event("parser_update_pinfo", self.update_pinfo)
     
         #Chat
 
@@ -51,29 +65,33 @@ class Demo:
         parser.subscribe_to_event("gevent_cs_win_panel_match", self.match_end)
         
         #Player based Stats - kills, assists, deaths, etc 
-        parser.subscribe_to_event("gevent_player_death", self.player_death)
         parser.subscribe_to_event("gevent_player_spawn", self.player_spawn)
+        parser.subscribe_to_event("gevent_player_death", self.player_death)
         parser.subscribe_to_event("gevent_bomb_planted", self.bomb_planted)
         
-
         parser.parse()
 
 
     #-----------------------------------Demo Start, Finnish-----------------------------------
     
     def demo_started(self,data):
+        self.map = data.map_name
         self.match_started = False
         self.round_current = 1
         self.team_score = {2: 0, 3: 0}
         self.max_players = 0
-        self.PLAYERS = dict()
-        self.BOTS = dict()
-        self.takeovers = dict()
-        self.STATS = {"otherdata": {"map": data.map_name}, 'rounds':{}}
+        self.player_stats = dict()
+        self.tickrate = int(data.ticks / data.playback_time)
+        if 'FACEIT' in data.server_name:
+            self.service = 'FACEIT'
+        elif 'ESL' in data.server_name:
+            self.service = 'ESL'
+        elif self.tickrate == 128:
+            self.service = 'ESEA'
 
 
     def demo_ended (self, data):
-        print("MATCH ENDED.....................................................................")
+        printVerbose("Demofile ended")
 
 
 
@@ -81,13 +99,8 @@ class Demo:
 
     def player_team(self,data):
         if data["team"] == 0:
-            if data["isbot"] and self.BOTS.get(data["userid"]):
-                self.BOTS.pop(data["userid"])
             return
-        if data["isbot"] and not self.BOTS.get(data["userid"]):
-            self.BOTS.update({data["userid"]: data["team"]})
-            return
-        rp = self.PLAYERS.get(data["userid"])
+        rp = self.player_stats.get(data["userid"])
         if rp and rp.start_team is None:
             if self.max_players == 10:
                 if self.round_current <= 15:
@@ -115,62 +128,52 @@ class Demo:
         if self.match_started:
             self._reset_pstats()
         self.match_started = True
-        print("MATCH STARTED.....................................................................")
+        printVerbose("Match started")
 
-    def round_start(data):
-        print("ROUND START")
+    def round_start(self, data):
+        printVerbose("----------\nRound {} started".format(self.round_current))
 
     def round_fr_end(self, data):
         self.round_start_tick = self.current_tick
+        printVerbose("Round {} freezetime ended".format(self.round_current))
 
     def round_officially_ended (self, data):
+        printVerbose("Round {} ended".format(self.round_current))
         if self.match_started:
-            self.STATS['rounds'].update({})
             self.round_current += 1
             self.max_round_time = 115
-            for p in self.PLAYERS.values():
+            for p in self.player_stats.values():
                 if p:
                     p.dead = False
-        print("ROUND {}..........................................................".format(self.round_current))
+        
 
 
-    def match_end(data):
-        print("MATCH ENDED")
+    def match_end(self, data):
+        printVerbose("Match ended")
 
     #-----------------------------------Demo Start, Finnish-----------------------------------
 
     def player_death(self,data):
         if self.match_started:
-            k = self.PLAYERS.get(data["attacker"])
-            a = self.PLAYERS.get(data["assister"])
-            d = self.PLAYERS.get(data["userid"])
-            kf = self.BOTS.get(data["attacker"])
-            af = self.BOTS.get(data["assister"])
-            df = self.BOTS.get(data["userid"])
-            kto = self.takeovers.get(data["attacker"])
-            ato = self.takeovers.get(data["assister"])
-            dto = self.takeovers.get(data["userid"])
-            # if self.round_current == 7:
-            #     print (self, data)
+            k = self.player_stats.get(data["attacker"])
+            a = self.player_stats.get(data["assister"])
+            d = self.player_stats.get(data["userid"])
+
             if data["assister"] and not data["assistedflash"]:
-                if a and not ato:  # asd
-                    self.PLAYERS[data["assister"]].a += 1
+                if a:  # asd
+                    self.player_stats[data["assister"]].a += 1
                     # print("ass", d.userinfo.xuid, d.start_team, a.start_team, df, af)
                     if d and a.start_team and d.start_team and a.start_team == d.start_team:
-                        self.PLAYERS[data["assister"]].a -= 1
-                    elif not df and a.start_team and a.start_team == df:
-                        self.PLAYERS[data["assister"]].a -= 1
-            if k and not kto:
-                self.PLAYERS[data["attacker"]].k += 1
-            if d and not dto:
-                self.PLAYERS[data["userid"]].d += 1
-            if d and not dto and data["userid"] == data["attacker"]:
-                self.PLAYERS[data["userid"]].k -= 2
+                        self.player_stats[data["assister"]].a -= 1
+            if k:
+                self.player_stats[data["attacker"]].k += 1
+            if d:
+                self.player_stats[data["userid"]].d += 1
+            if d and data["userid"] == data["attacker"]:
+                self.player_stats[data["userid"]].k -= 2
             else:
-                if k and not kto and d and k.start_team and d.start_team and k.start_team == d.start_team:
-                    self.PLAYERS[data["attacker"]].k -= 2
-                elif k and not kto and not df and k.start_team and k.start_team == df:
-                    self.PLAYERS[data["attacker"]].k -= 2
+                if k and d and k.start_team and d.start_team and k.start_team == d.start_team:
+                    self.player_stats[data["attacker"]].k -= 2
 
 
 
@@ -179,7 +182,7 @@ class Demo:
         # trying to find out player teams since i'm not parsing entities
         if data["teamnum"] == 0:
             return
-        rp = self.PLAYERS.get(data["userid"])
+        rp = self.player_stats.get(data["userid"])
         # print(data["userid"], bp, rp)
         # print("inside")
         # print(round_current, ">", bp, rp.start_team if rp else None)
@@ -209,33 +212,31 @@ class Demo:
 
 
     def _reset_pstats(self):
-        for p2 in self.PLAYERS.values():
+        for p2 in self.player_stats.values():
             p2.start_team = None
 
 
-    def update_pinfo (self, data):
+    def update_pinfo(self, data):
         if data.guid != "BOT":
             exist = None
-            for x in self.PLAYERS.items():
+            for x in self.player_stats.items():
                 if data.xuid == x[1].userinfo.xuid:
                     exist = x[0]
                     break
             if exist:
-                self.PLAYERS[exist].update(data, ui=True)
+                self.player_stats[exist].update(data, ui=True)
                 if exist != data.user_id:
-                    self.PLAYERS.update({data.user_id: self.PLAYERS[exist]})
-                    self.PLAYERS.pop(exist)
+                    self.player_stats.update({data.user_id: self.player_stats[exist]})
+                    self.player_stats.pop(exist)
             else:
-                self.PLAYERS.update({data.user_id: MyPlayer(data, ui=True)})
-            self.max_players = len(self.PLAYERS)
+                self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
+            self.max_players = len(self.player_stats)
 
 
 
 
 
-
-
-    def bomb_planted (self, data):
+    def bomb_planted(self, data):
         self.max_round_time = 40
         self.round_start_tick = self.current_tick
 
@@ -249,6 +250,7 @@ class MyPlayer:
         self.id = None
         self.name = None
         self.profile = None
+        self.bot = False
         # 2 = "T" // 3 = "CT"
         self.start_team = None
         self.userinfo = None

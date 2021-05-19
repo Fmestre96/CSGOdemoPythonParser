@@ -26,13 +26,17 @@ class DemoParser:
             self._ut_set.add("instancebaseline")
             self.subscribe_to_event("packet_svc_PacketEntities", self._mypkt_svc_PacketEntities)
             if self._ent != "ALL":
+                settings = self._ent.split("+")
                 self._ent_set = set()
-                self._ent_set.add("CCSPlayer")
-                self._ent_set.add("CCSTeam")
-                self._ent_set.add("CCSPlayerResource")
-                self._ent_set.add("CCSGameRulesProxy")
-                if self._ent == "P+G":
-                    self._ent_set.add("CBaseCSGrenadeProjectile")
+                for s in settings:
+                    if s == "P":
+                        self._ent_set.add("CCSPlayer")
+                        self._ent_set.add("CCSPlayerResource")
+                        self._ent_set.add("CCSGameRulesProxy")
+                    elif s == "T":
+                        self._ent_set.add("CCSTeam")
+                    elif s == "G":
+                        self._ent_set.add("CBaseCSGrenadeProjectile")
         if dump:
             self.dump = open(dump, "w", encoding="utf-8")
             self._counter = [[], [], []]

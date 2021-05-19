@@ -45,8 +45,10 @@ class Demo:
 
         #Timing based Stats - Round starts, freezetime and End 
         parser.subscribe_to_event("gevent_begin_new_match", self.begin_new_match)
+        parser.subscribe_to_event("gevent_round_start", self.round_start)
         parser.subscribe_to_event("gevent_round_freeze_end", self.round_fr_end)
         parser.subscribe_to_event("gevent_round_officially_ended", self.round_officially_ended)
+        parser.subscribe_to_event("gevent_cs_win_panel_match", self.match_end)
         
         #Player based Stats - kills, assists, deaths, etc 
         parser.subscribe_to_event("gevent_player_death", self.player_death)
@@ -109,9 +111,17 @@ class Demo:
 
     #------------------------Timing based Stats - Round starts, freezetime and End ------------------------
 
-    def round_fr_end (self, data):
-        self.round_start_tick = self.current_tick
+    def begin_new_match(self, data):
+        if self.match_started:
+            self._reset_pstats()
+        self.match_started = True
+        print("MATCH STARTED.....................................................................")
 
+    def round_start(data):
+        print("ROUND START")
+
+    def round_fr_end(self, data):
+        self.round_start_tick = self.current_tick
 
     def round_officially_ended (self, data):
         if self.match_started:
@@ -124,6 +134,8 @@ class Demo:
         print("ROUND {}..........................................................".format(self.round_current))
 
 
+    def match_end(data):
+        print("MATCH ENDED")
 
     #-----------------------------------Demo Start, Finnish-----------------------------------
 
@@ -192,14 +204,6 @@ class Demo:
                         rp.start_team = 2
         # print(">>", _BOTS.get(data["userid"]), rp.start_team if rp else None)
         # print(".................................................")
-
-
-    def begin_new_match(self, data):
-        if self.match_started:
-            self._reset_pstats()
-        self.match_started = True
-        print("MATCH STARTED.....................................................................")
-
 
 
 

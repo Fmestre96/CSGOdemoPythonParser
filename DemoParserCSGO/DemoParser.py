@@ -7,7 +7,7 @@ from . import PrintStuff as p
 from . import consts as c
 from .BitReader import Bitbuffer
 from .ByteReader import Bytebuffer
-from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity, SayText, SayText2, SpottedEntity
+from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity
 
 
 

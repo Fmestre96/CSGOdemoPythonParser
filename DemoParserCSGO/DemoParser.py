@@ -332,6 +332,8 @@ class DemoParser:
             s = cstrike15_usermessages_pb2.CCSUsrMsg_SayText()
             s.ParseFromString(msg.msg_data)   
             s_dict = {
+                'type_id': msg.msg_type,
+                'type_name': 'SayText',
                 'ent_idx': s.ent_idx,
                 'text': s.text,
                 'chat': s.chat,
@@ -341,6 +343,8 @@ class DemoParser:
             s = cstrike15_usermessages_pb2.CCSUsrMsg_SayText2()
             s.ParseFromString(msg.msg_data)
             s_dict = {
+                'type_id': msg.msg_type,
+                'type_name': 'SayText2',
                 'ent_idx': s.ent_idx,
                 'chat': s.chat,
                 'msg_name': s.msg_name,

@@ -26,7 +26,11 @@ class Demo:
         self.round_stats = dict()
         self.all_chat = []
 
-    def save_to_file(self, data):
+
+    def save_to_file(self, ignoreData=None):
+        hf.saveJson(self.get_stats())
+
+    def get_stats(self):
         stats = {
             'file_info': {
                 'path': self.path,
@@ -46,9 +50,8 @@ class Demo:
                 v.name: v.toDict() for v in self.player_stats.values()
             },
             'all_chat': self.all_chat,
-            
         }
-        hf.saveJson(stats)
+        return stats
 
 
     def analyze(self):

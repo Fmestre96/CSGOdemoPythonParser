@@ -8,6 +8,7 @@ def printVerbose(s):
 
 class Demo:
     def __init__(self,path):
+        self.parser = None
         self.path = path
         self.map = ""
         self.service = "MM"
@@ -23,9 +24,13 @@ class Demo:
         self.max_round_time = 115
         self.player_stats = dict()
         self.round_stats = dict()
+        self.all_chat = []
 
     def save_to_file(self, data):
         stats = {
+            'file_info': {
+                'path': self.path,
+            },
             'demo_info': {
                 'service': self.service,
                 'map': self.map,
@@ -34,8 +39,13 @@ class Demo:
             'match_stats': {
                 'rounds': self.round_current,
             },
-            'round_stats':{},
-            'player_stats': {v.name: v.toDict() for v in self.player_stats.values()},
+            'round_stats':{
+
+            },
+            'player_stats': {
+                v.name: v.toDict() for v in self.player_stats.values()
+            },
+            'all_chat': self.all_chat,
             
         }
         hf.saveJson(stats)
@@ -43,33 +53,34 @@ class Demo:
 
     def analyze(self):
         file = open(self.path, "rb")
-        parser = dp.DemoParser(file, ent="NONE")
+        self.parser = dp.DemoParser(file, ent="NONE")
 
         #Demo Start, Finnish
-        parser.subscribe_to_event("parser_start", self.demo_started)
-        parser.subscribe_to_event("cmd_dem_stop", self.demo_ended)
-        parser.subscribe_to_event("cmd_dem_stop", self.save_to_file)
+        self.parser.subscribe_to_event("parser_start", self.demo_started)
+        self.parser.subscribe_to_event("cmd_dem_stop", self.demo_ended)
+        self.parser.subscribe_to_event("cmd_dem_stop", self.save_to_file)
 
         #Connects
-        parser.subscribe_to_event("gevent_player_team", self.player_team)
-        parser.subscribe_to_event("parser_update_pinfo", self.update_pinfo)
+        self.parser.subscribe_to_event("gevent_player_team", self.player_team)
+        self.parser.subscribe_to_event("parser_update_pinfo", self.update_pinfo)
     
         #Chat
-
+        self.parser.subscribe_to_event("parser_server_chat", self.server_chat)
+        self.parser.subscribe_to_event("parser_player_chat", self.player_chat)
 
         #Timing based Stats - Round starts, freezetime and End 
-        parser.subscribe_to_event("gevent_begin_new_match", self.begin_new_match)
-        parser.subscribe_to_event("gevent_round_start", self.round_start)
-        parser.subscribe_to_event("gevent_round_freeze_end", self.round_fr_end)
-        parser.subscribe_to_event("gevent_round_officially_ended", self.round_officially_ended)
-        parser.subscribe_to_event("gevent_cs_win_panel_match", self.match_end)
+        self.parser.subscribe_to_event("gevent_begin_new_match", self.begin_new_match)
+        self.parser.subscribe_to_event("gevent_round_start", self.round_start)
+        self.parser.subscribe_to_event("gevent_round_freeze_end", self.round_fr_end)
+        self.parser.subscribe_to_event("gevent_round_officially_ended", self.round_officially_ended)
+        self.parser.subscribe_to_event("gevent_cs_win_panel_match", self.match_end)
         
         #Player based Stats - kills, assists, deaths, etc 
-        parser.subscribe_to_event("gevent_player_spawn", self.player_spawn)
-        parser.subscribe_to_event("gevent_player_death", self.player_death)
-        parser.subscribe_to_event("gevent_bomb_planted", self.bomb_planted)
+        self.parser.subscribe_to_event("gevent_player_spawn", self.player_spawn)
+        self.parser.subscribe_to_event("gevent_player_death", self.player_death)
+        self.parser.subscribe_to_event("gevent_bomb_planted", self.bomb_planted)
         
-        parser.parse()
+        self.parser.parse()
 
 
     #-----------------------------------Demo Start, Finnish-----------------------------------
@@ -122,6 +133,30 @@ class Demo:
                         rp.start_team = 2
 
 
+    def update_pinfo(self, data):
+        if data.guid != "BOT":
+            exist = None
+            for x in self.player_stats.items():
+                if data.xuid == x[1].userinfo.xuid:
+                    exist = x[0]
+                    break
+            if exist:
+                self.player_stats[exist].update(data, ui=True)
+                if exist != data.user_id:
+                    self.player_stats.update({data.user_id: self.player_stats[exist]})
+                    self.player_stats.pop(exist)
+            else:
+                self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
+            self.max_players = len(self.player_stats)
+
+
+
+    #--------------------------- Connects  ---------------------------
+    def player_chat(self, data):
+        self.all_chat.append(data)
+    
+    def server_chat(self, data):
+        self.all_chat.append(data)
     #------------------------Timing based Stats - Round starts, freezetime and End ------------------------
 
     def begin_new_match(self, data):
@@ -131,6 +166,9 @@ class Demo:
         printVerbose("Match started")
 
     def round_start(self, data):
+        if(self.round_current==2):
+            #print(self.parser._game_events_dict)
+            hf.saveTxt(self.parser._game_events_dict)
         printVerbose("----------\nRound {} started".format(self.round_current))
 
     def round_fr_end(self, data):
@@ -216,21 +254,7 @@ class Demo:
             p2.start_team = None
 
 
-    def update_pinfo(self, data):
-        if data.guid != "BOT":
-            exist = None
-            for x in self.player_stats.items():
-                if data.xuid == x[1].userinfo.xuid:
-                    exist = x[0]
-                    break
-            if exist:
-                self.player_stats[exist].update(data, ui=True)
-                if exist != data.user_id:
-                    self.player_stats.update({data.user_id: self.player_stats[exist]})
-                    self.player_stats.pop(exist)
-            else:
-                self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
-            self.max_players = len(self.player_stats)
+
 
 
 

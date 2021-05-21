@@ -418,3 +418,12 @@ class Bitbuffer:
             return number | ~mask
         else:
             return number & mask
+
+    def read_param_string(self):
+        return self.read_string(self.read_var_int())
+
+    def read_param_bool(self):
+        return self.read_uint_bits(8) % 2 == 1 
+
+    def read_param_int(self):
+        return self.read_var_int()

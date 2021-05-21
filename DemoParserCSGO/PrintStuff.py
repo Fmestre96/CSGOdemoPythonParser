@@ -142,6 +142,9 @@ def saveJson(dic):
         json.dump(dic, outfile)
 
 
+def saveTxt(o):
+    with open('data.txt', 'w') as outfile:
+        outfile.write(str(o))
 
 def fix_len_string(text, le):
     text = str(text)

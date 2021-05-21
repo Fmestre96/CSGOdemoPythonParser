@@ -1,30 +1,32 @@
 import math
 import threading as t
 
-from . import NETMSG_pb2 as pbuf
+from .proto import netmessages_pb2, cstrike15_usermessages_pb2
+
 from . import PrintStuff as p
 from . import consts as c
 from .BitReader import Bitbuffer
 from .ByteReader import Bytebuffer
-from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity
+from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, ServerClass, Entity, SayText, SayText2, SpottedEntity
+
 
 
 class DemoParser:
-    def __init__(self, demo_file, dump=None, ent="ALL"):
+    def __init__(self, demo_file, ent="ALL"):
         self._buf = Bytebuffer(demo_file.read())
-        self._pbuf_dict = dict()
-        for item in pbuf.NET_Messages.items():
-            self._pbuf_dict.update({item[1]: item[0]})
-        for item in pbuf.SVC_Messages.items():
-            self._pbuf_dict.update({item[1]: item[0]})
+        self._netmessages_pb2_dict = dict()
+        for item in netmessages_pb2.NET_Messages.items():
+            self._netmessages_pb2_dict.update({item[1]: item[0]})
+        for item in netmessages_pb2.SVC_Messages.items():
+            self._netmessages_pb2_dict.update({item[1]: item[0]})
         self._subscribers = dict()
-        self.dump = None
         self._ut_set = set()
         self._ut_set.add("userinfo")
         self._ent = ent.upper()
         if self._ent != "NONE":
             self._ut_set.add("instancebaseline")
             self.subscribe_to_event("packet_svc_PacketEntities", self._mypkt_svc_PacketEntities)
+
             if self._ent != "ALL":
                 settings = self._ent.split("+")
                 self._ent_set = set()
@@ -37,18 +39,15 @@ class DemoParser:
                         self._ent_set.add("CCSTeam")
                     elif s == "G":
                         self._ent_set.add("CBaseCSGrenadeProjectile")
-        if dump:
-            self.dump = open(dump, "w", encoding="utf-8")
-            self._counter = [[], [], []]
+                    elif s =="M":
+                        self._ent_set.add("Cstrike_Chat_All")
 
-        # self.subscribe_to_event("gevent_player_death", self._my_player_death)
-        self.subscribe_to_event("gevent_begin_new_match", self._my_begin_new_match)
-        self.subscribe_to_event("gevent_round_end", self._my_round_end)
-        self.subscribe_to_event("gevent_round_officially_ended", self._my_round_officially_ended)
         self.subscribe_to_event("packet_svc_CreateStringTable", self._mypkt_svc_CreateStringTable)
         self.subscribe_to_event("packet_svc_UpdateStringTable", self._mypkt_svc_UpdateStringTable)
         self.subscribe_to_event("packet_svc_GameEvent", self._mypkt_svc_GameEvent)
         self.subscribe_to_event("packet_svc_GameEventList", self._mypkt_svc_GameEventList)
+        self.subscribe_to_event("packet_svc_UserMessage", self._mypkt_svc_EmitUserMessage)
+    
 
         self.header = None
         self._game_events_dict = dict()
@@ -61,9 +60,6 @@ class DemoParser:
         self._entities = dict()
         self._players_by_uid = dict()
         self.progress = 0
-        self._match_started = False
-        self._round_current = 1
-        self.opr = False
 
     def subscribe_to_event(self, event: str, func: object):
         fncs = self._subscribers.get(event)
@@ -113,9 +109,6 @@ class DemoParser:
             # print(command_header.tick, command_header.command, command_header.player)
             self.progress = round(tick / self.header.ticks * 100, 2)
             cmd = command_header.command
-            # self.dump.write("cmd= {}\n".format(cmd))
-            if self.dump:
-                self._update_cmd_counter(cmd, cmd=True)
             if cmd in (c.DEM_SIGNON, c.DEM_PACKET):  # 1 and 2
                 self._handle_packet()
             elif cmd in (c.DEM_SYNCTICK, c.DEM_CUSTOMDATA):  # 3 and 8
@@ -134,17 +127,12 @@ class DemoParser:
                 self._handle_stringtables()
             elif cmd == c.DEM_STOP:  # 7
                 self._sub_event("cmd_dem_stop", None)
-                # print(self.progress, "%  >DEMO ENDED<")
+                #print(self.progress, "%  >DEMO ENDED<")
                 #print("MATCH ENDED.....................................................................")
                 demo_finished = True
             else:
                 demo_finished = True
                 raise Exception("Demo command not recognised: {}".format(cmd))
-        self._demo_ended_stuff()
-        self._sub_event("parser_demo_finished_print", self.dump)
-        # self._sub_event("parser_demo_finished", None)
-        if self.dump:
-            self.dump.close()
         return
 
     def _handle_packet(self):
@@ -155,11 +143,8 @@ class DemoParser:
             msg = self._buf.read_varint()
             size = self._buf.read_varint()
             data = self._buf.read(size)
-            # self.dump.write("...msg= {} / size= {}\n".format(msg, size))
             index += self._buf.varint_size(msg) + self._buf.varint_size(size) + size
-            if self.dump:
-                self._update_cmd_counter(msg, msg=True)
-            self._sub_event("packet_" + self._pbuf_dict[msg], data)
+            self._sub_event("packet_" + self._netmessages_pb2_dict[msg], data)
 
     def _handle_datatables(self):
         length = self._buf.read_int()
@@ -167,7 +152,7 @@ class DemoParser:
             v_type = self._buf.read_varint()
             size = self._buf.read_varint()
             data = self._buf.read(size)
-            table = pbuf.CSVCMsg_SendTable()
+            table = netmessages_pb2.CSVCMsg_SendTable()
             table.ParseFromString(data)
             if table.is_end:
                 break
@@ -196,7 +181,7 @@ class DemoParser:
     # PACKET MESSAGES >
 
     def _mypkt_svc_CreateStringTable(self, data):
-        msg = pbuf.CSVCMsg_CreateStringTable()
+        msg = netmessages_pb2.CSVCMsg_CreateStringTable()
         msg.ParseFromString(data)
         msg2 = StringTable(msg)
         uinfo = True if msg.name == "userinfo" else False
@@ -255,7 +240,7 @@ class DemoParser:
         # print("PB", sorted(self._pending_baselines_dict.keys()))
 
     def _mypkt_svc_UpdateStringTable(self, data):
-        msg = pbuf.CSVCMsg_UpdateStringTable()
+        msg = netmessages_pb2.CSVCMsg_UpdateStringTable()
         msg.ParseFromString(data)
         obj = self._string_tables_list[msg.table_id]
         uinfo = True if obj.name == "userinfo" else False
@@ -264,10 +249,8 @@ class DemoParser:
                                       obj.uds, obj.udfs)
 
     def _mypkt_svc_GameEvent(self, data):
-        msg = pbuf.CSVCMsg_GameEvent()
+        msg = netmessages_pb2.CSVCMsg_GameEvent()
         msg.ParseFromString(data)
-        if self.dump:
-            self._update_cmd_counter(msg.eventid, ev=True)
         args = {}
         for i in range(len(msg.keys)):
             key_name = self._game_events_dict[msg.eventid].keys[i].name
@@ -294,7 +277,7 @@ class DemoParser:
         self._sub_event("gevent_" + self._game_events_dict[msg.eventid].name, args)
 
     def _mypkt_svc_PacketEntities(self, data):
-        msg = pbuf.CSVCMsg_PacketEntities()
+        msg = netmessages_pb2.CSVCMsg_PacketEntities()
         msg.ParseFromString(data)
         buf = Bitbuffer(msg.entity_data)
         entity_id = -1
@@ -333,41 +316,43 @@ class DemoParser:
             entity.update(table_name, var_name, update["value"])
 
     def _mypkt_svc_GameEventList(self, data):
-        msg = pbuf.CSVCMsg_GameEventList()
+        msg = netmessages_pb2.CSVCMsg_GameEventList()
         msg.ParseFromString(data)
         for event in msg.descriptors:
             self._game_events_dict.update({event.eventid: event})
 
+
+    def _mypkt_svc_EmitUserMessage(self, data):
+        
+        msg = netmessages_pb2.CSVCMsg_UserMessage()
+        msg.ParseFromString(data)
+        #5 = SayText
+        #6 = SayText2
+        if(msg.msg_type == 5):
+            s = cstrike15_usermessages_pb2.CCSUsrMsg_SayText()
+            s.ParseFromString(msg.msg_data)   
+            s_dict = {
+                'ent_idx': s.ent_idx,
+                'text': s.text,
+                'chat': s.chat,
+            }
+            self._sub_event("parser_server_chat", s_dict)
+        elif(msg.msg_type == 6):
+            s = cstrike15_usermessages_pb2.CCSUsrMsg_SayText2()
+            s.ParseFromString(msg.msg_data)
+            s_dict = {
+                'ent_idx': s.ent_idx,
+                'chat': s.chat,
+                'msg_name': s.msg_name,
+                'params': [p for p in s.params],
+                'textallchat': s.textallchat
+            }
+            self._sub_event("parser_player_chat", s_dict)
+        #elif(msg.msg_type == 25):
+        #    s = SpottedEntity(msg.msg_data)
+        #    print(s.__dict__)
+            
     # NO MORE PACKET MESSAGES <
-
-    # EVENTS HANDLERS >
-
-    def _my_player_death(self, data):
-        pass
-        # if not self.opr:
-        #     p.print_entities(self.dump, self._entities)
-        #     self.dump.write("\n.........................................................................................................................................................................................\n")
-        #     self.opr = True
-
-    def _my_begin_new_match(self, data):
-        # pass
-        self._match_started = True
-        # self.opr = False
-        #print("MATCH STARTED.....................................................................")
-
-    def _my_round_end(self, data):
-        pass
-        # if self._match_started:
-        #     print("    {} / {}".format(data["reason"], data["message"]))
-
-    def _my_round_officially_ended(self, data):
-        # pass
-        if self._match_started:
-            self._round_current += 1
-            # self.opr = False
-        # if self._round_current == 30:
-        #     p.print_one_entity(self.dump, self.get_resource_table())
-        #print("ROUND {}..........................................................".format(self._round_current))
 
     # NO MORE EVENTS HANDLERS <
 
@@ -511,16 +496,6 @@ class DemoParser:
                     return
             self._counter[2].append([value, 1])
             return
-
-    def _demo_ended_stuff(self):
-        if self.dump:
-            p.print_one_entity(self.dump, self.get_resource_table())
-            p.print_header(self.dump, self.header)
-            p.print_event_list(self.dump, self._game_events_dict)
-            p.print_counter(self.dump, self._counter)
-            p.print_userinfo(self.dump, self._string_tables_list)
-            # p.print_players_userinfo(self.dump, self._players_by_uid)
-            # p.print_entities(self.dump, self._entities)
 
     #  OTHER FUNCTIONS >
 

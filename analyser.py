@@ -166,9 +166,6 @@ class Demo:
         printVerbose("Match started")
 
     def round_start(self, data):
-        if(self.round_current==2):
-            #print(self.parser._game_events_dict)
-            hf.saveTxt(self.parser._game_events_dict)
         printVerbose("----------\nRound {} started".format(self.round_current))
 
     def round_fr_end(self, data):

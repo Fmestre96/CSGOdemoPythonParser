@@ -329,6 +329,11 @@ class DemoParser:
         #5 = SayText
         #6 = SayText2
         if(msg.msg_type == 5):
+            #event = cstrike15_usermessages_pb2.ECstrike15UserMessages.items()[int(msg.msg_type)-1][0]
+            #event = cstrike15_usermessages_pb2.ECstrike15UserMessages.keys()[int(msg.msg_type)-1]
+            #event = cstrike15_usermessages_pb2.ECstrike15UserMessages.Name(msg.msg_type)
+            #print(event)
+            #print(dir(cstrike15_usermessages_pb2.DESCRIPTOR))
             s = cstrike15_usermessages_pb2.CCSUsrMsg_SayText()
             s.ParseFromString(msg.msg_data)   
             s_dict = {

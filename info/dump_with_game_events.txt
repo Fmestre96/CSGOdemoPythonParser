@@ -1,0 +1,548 @@
+
+GAME EVENTS LIST:
+  > 0, server_spawn <
+    .... hostname / address / port / game / mapname / maxplayers / os / dedicated / official / password /
+  > 1, server_pre_shutdown <
+    .... reason /
+  > 2, server_shutdown <
+    .... reason /
+  > 3, server_cvar <
+    .... cvarname / cvarvalue /
+  > 4, server_message <
+    .... text /
+  > 5, server_addban <
+    .... name / userid / networkid / ip / duration / by / kicked /
+  > 6, server_removeban <
+    .... networkid / ip / by /
+  > 7, player_connect <
+    .... name / index / userid / networkid / address /
+  > 8, player_info <
+    .... name / index / userid / networkid / bot /
+  > 9, player_disconnect <
+    .... userid / reason / name / networkid /
+  > 10, player_activate <
+    .... userid /
+  > 11, player_connect_full <
+    .... userid / index /
+  > 12, player_say <
+    .... userid / text /
+  > 13, cs_round_start_beep <
+    ....
+  > 14, cs_round_final_beep <
+    ....
+  > 15, round_time_warning <
+    ....
+  > 16, hltv_replay <
+    .... delay /
+  > 17, team_info <
+    .... teamid / teamname /
+  > 18, team_score <
+    .... teamid / score /
+  > 19, teamplay_broadcast_audio <
+    .... team / sound /
+  > 20, gameui_hidden <
+    ....
+  > 21, items_gifted <
+    .... player / itemdef / numgifts / giftidx / accountid /
+  > 22, player_team <
+    .... userid / team / oldteam / disconnect / autoteam / silent / isbot /
+  > 23, player_class <
+    .... userid / class /
+  > 24, player_death <
+    .... userid / attacker / assister / assistedflash / weapon / weapon_itemid / weapon_fauxitemid / weapon_originalowner_xuid / headshot / dominated / revenge / wipe / penetrated / noreplay /
+  > 25, player_hurt <
+    .... userid / attacker / health / armor / weapon / dmg_health / dmg_armor / hitgroup /
+  > 26, player_chat <
+    .... teamonly / userid / text /
+  > 27, player_score <
+    .... userid / kills / deaths / score /
+  > 28, player_spawn <
+    .... userid / teamnum /
+  > 29, player_shoot <
+    .... userid / weapon / mode /
+  > 30, player_use <
+    .... userid / entity /
+  > 31, player_changename <
+    .... userid / oldname / newname /
+  > 32, player_hintmessage <
+    .... hintmessage /
+  > 33, game_init <
+    ....
+  > 34, game_newmap <
+    .... mapname /
+  > 35, game_start <
+    .... roundslimit / timelimit / fraglimit / objective /
+  > 36, game_end <
+    .... winner /
+  > 37, round_start <
+    .... timelimit / fraglimit / objective /
+  > 38, round_announce_match_point <
+    ....
+  > 39, round_announce_final <
+    ....
+  > 40, round_announce_last_round_half <
+    ....
+  > 41, round_announce_match_start <
+    ....
+  > 42, round_announce_warmup <
+    ....
+  > 43, round_end <
+    .... winner / reason / message / legacy / player_count / nomusic /
+  > 44, round_end_upload_stats <
+    ....
+  > 45, round_officially_ended <
+    ....
+  > 46, ugc_map_info_received <
+    .... published_file_id /
+  > 47, ugc_map_unsubscribed <
+    .... published_file_id /
+  > 48, ugc_map_download_error <
+    .... published_file_id / error_code /
+  > 49, ugc_file_download_finished <
+    .... hcontent /
+  > 50, ugc_file_download_start <
+    .... hcontent / published_file_id /
+  > 51, begin_new_match <
+    ....
+  > 52, round_start_pre_entity <
+    ....
+  > 53, teamplay_round_start <
+    .... full_reset /
+  > 54, hostname_changed <
+    .... hostname /
+  > 55, difficulty_changed <
+    .... newDifficulty / oldDifficulty / strDifficulty /
+  > 56, finale_start <
+    .... rushes /
+  > 57, game_message <
+    .... target / text /
+  > 58, dm_bonus_weapon_start <
+    .... time / Pos /
+  > 59, survival_announce_phase <
+    .... phase /
+  > 60, break_breakable <
+    .... entindex / userid / material /
+  > 61, break_prop <
+    .... entindex / userid /
+  > 62, player_decal <
+    .... userid /
+  > 63, entity_killed <
+    .... entindex_killed / entindex_attacker / entindex_inflictor / damagebits /
+  > 64, bonus_updated <
+    .... numadvanced / numbronze / numsilver / numgold /
+  > 65, player_stats_updated <
+    .... forceupload /
+  > 66, achievement_event <
+    .... achievement_name / cur_val / max_val /
+  > 67, achievement_increment <
+    .... achievement_id / cur_val / max_val /
+  > 68, achievement_earned <
+    .... player / achievement /
+  > 69, achievement_write_failed <
+    ....
+  > 70, physgun_pickup <
+    .... entindex /
+  > 71, flare_ignite_npc <
+    .... entindex /
+  > 72, helicopter_grenade_punt_miss <
+    ....
+  > 73, user_data_downloaded <
+    ....
+  > 74, ragdoll_dissolved <
+    .... entindex /
+  > 75, gameinstructor_draw <
+    ....
+  > 76, gameinstructor_nodraw <
+    ....
+  > 77, map_transition <
+    ....
+  > 78, entity_visible <
+    .... userid / subject / classname / entityname /
+  > 79, set_instructor_group_enabled <
+    .... group / enabled /
+  > 80, instructor_server_hint_create <
+    .... hint_name / hint_replace_key / hint_target / hint_activator_userid / hint_timeout / hint_icon_onscreen / hint_icon_offscreen / hint_caption / hint_activator_caption / hint_color / hint_icon_offset / hint_range / hint_flags / hint_binding / hint_gamepad_binding / hint_allow_nodraw_target / hint_nooffscreen / hint_forcecaption / hint_local_player_only /
+  > 81, instructor_server_hint_stop <
+    .... hint_name /
+  > 82, read_game_titledata <
+    .... controllerId /
+  > 83, write_game_titledata <
+    .... controllerId /
+  > 84, reset_game_titledata <
+    .... controllerId /
+  > 85, weaponhud_selection <
+    .... userid / mode / entindex /
+  > 86, vote_ended <
+    ....
+  > 87, vote_started <
+    .... issue / param1 / team / initiator /
+  > 88, vote_changed <
+    .... vote_option1 / vote_option2 / vote_option3 / vote_option4 / vote_option5 / potentialVotes /
+  > 89, vote_passed <
+    .... details / param1 / team /
+  > 90, vote_failed <
+    .... team /
+  > 91, vote_cast <
+    .... vote_option / team / entityid /
+  > 92, vote_options <
+    .... count / option1 / option2 / option3 / option4 / option5 /
+  > 93, endmatch_mapvote_selecting_map <
+    .... count / slot1 / slot2 / slot3 / slot4 / slot5 / slot6 / slot7 / slot8 / slot9 / slot10 /
+  > 94, endmatch_cmm_start_reveal_items <
+    ....
+  > 95, inventory_updated <
+    ....
+  > 96, cart_updated <
+    ....
+  > 97, store_pricesheet_updated <
+    ....
+  > 98, gc_connected <
+    ....
+  > 99, item_schema_initialized <
+    ....
+  > 100, client_loadout_changed <
+    ....
+  > 101, add_player_sonar_icon <
+    .... userid / pos_x / pos_y / pos_z /
+  > 102, add_bullet_hit_marker <
+    .... userid / bone / pos_x / pos_y / pos_z / ang_x / ang_y / ang_z / start_x / start_y / start_z / hit /
+  > 103, verify_client_hit <
+    .... userid / pos_x / pos_y / pos_z / timestamp /
+  > 104, other_death <
+    .... otherid / othertype / attacker / weapon / weapon_itemid / weapon_fauxitemid / weapon_originalowner_xuid / headshot / penetrated /
+  > 105, item_purchase <
+    .... userid / team / loadout / weapon /
+  > 106, bomb_beginplant <
+    .... userid / site /
+  > 107, bomb_abortplant <
+    .... userid / site /
+  > 108, bomb_planted <
+    .... userid / site /
+  > 109, bomb_defused <
+    .... userid / site /
+  > 110, bomb_exploded <
+    .... userid / site /
+  > 111, bomb_dropped <
+    .... userid / entindex /
+  > 112, bomb_pickup <
+    .... userid /
+  > 113, defuser_dropped <
+    .... entityid /
+  > 114, defuser_pickup <
+    .... entityid / userid /
+  > 115, announce_phase_end <
+    ....
+  > 116, cs_intermission <
+    ....
+  > 117, bomb_begindefuse <
+    .... userid / haskit /
+  > 118, bomb_abortdefuse <
+    .... userid /
+  > 119, hostage_follows <
+    .... userid / hostage /
+  > 120, hostage_hurt <
+    .... userid / hostage /
+  > 121, hostage_killed <
+    .... userid / hostage /
+  > 122, hostage_rescued <
+    .... userid / hostage / site /
+  > 123, hostage_stops_following <
+    .... userid / hostage /
+  > 124, hostage_rescued_all <
+    ....
+  > 125, hostage_call_for_help <
+    .... hostage /
+  > 126, vip_escaped <
+    .... userid /
+  > 127, vip_killed <
+    .... userid / attacker /
+  > 128, player_radio <
+    .... userid / slot /
+  > 129, bomb_beep <
+    .... entindex /
+  > 130, weapon_fire <
+    .... userid / weapon / silenced /
+  > 131, weapon_fire_on_empty <
+    .... userid / weapon /
+  > 132, grenade_thrown <
+    .... userid / weapon /
+  > 133, weapon_outofammo <
+    .... userid /
+  > 134, weapon_reload <
+    .... userid /
+  > 135, weapon_zoom <
+    .... userid /
+  > 136, silencer_detach <
+    .... userid /
+  > 137, inspect_weapon <
+    .... userid /
+  > 138, weapon_zoom_rifle <
+    .... userid /
+  > 139, player_spawned <
+    .... userid / inrestart /
+  > 140, item_pickup <
+    .... userid / item / silent / defindex /
+  > 141, item_pickup_slerp <
+    .... userid / index / behavior /
+  > 142, item_pickup_failed <
+    .... userid / item / reason / limit /
+  > 143, item_remove <
+    .... userid / item / defindex /
+  > 144, ammo_pickup <
+    .... userid / item / index /
+  > 145, item_equip <
+    .... userid / item / defindex / canzoom / hassilencer / issilenced / hastracers / weptype / ispainted /
+  > 146, enter_buyzone <
+    .... userid / canbuy /
+  > 147, exit_buyzone <
+    .... userid / canbuy /
+  > 148, buytime_ended <
+    ....
+  > 149, enter_bombzone <
+    .... userid / hasbomb / isplanted /
+  > 150, exit_bombzone <
+    .... userid / hasbomb / isplanted /
+  > 151, enter_rescue_zone <
+    .... userid /
+  > 152, exit_rescue_zone <
+    .... userid /
+  > 153, silencer_off <
+    .... userid /
+  > 154, silencer_on <
+    .... userid /
+  > 155, buymenu_open <
+    .... userid /
+  > 156, buymenu_close <
+    .... userid /
+  > 157, round_prestart <
+    ....
+  > 158, round_poststart <
+    ....
+  > 159, grenade_bounce <
+    .... userid /
+  > 160, hegrenade_detonate <
+    .... userid / entityid / x / y / z /
+  > 161, flashbang_detonate <
+    .... userid / entityid / x / y / z /
+  > 162, smokegrenade_detonate <
+    .... userid / entityid / x / y / z /
+  > 163, smokegrenade_expired <
+    .... userid / entityid / x / y / z /
+  > 164, molotov_detonate <
+    .... userid / x / y / z /
+  > 165, decoy_detonate <
+    .... userid / entityid / x / y / z /
+  > 166, decoy_started <
+    .... userid / entityid / x / y / z /
+  > 167, tagrenade_detonate <
+    .... userid / entityid / x / y / z /
+  > 168, inferno_startburn <
+    .... entityid / x / y / z /
+  > 169, inferno_expire <
+    .... entityid / x / y / z /
+  > 170, inferno_extinguish <
+    .... entityid / x / y / z /
+  > 171, decoy_firing <
+    .... userid / entityid / x / y / z /
+  > 172, bullet_impact <
+    .... userid / x / y / z /
+  > 173, player_footstep <
+    .... userid /
+  > 174, player_jump <
+    .... userid /
+  > 175, player_blind <
+    .... userid / attacker / entityid / blind_duration /
+  > 176, player_falldamage <
+    .... userid / damage /
+  > 177, door_moving <
+    .... entindex / userid /
+  > 178, round_freeze_end <
+    ....
+  > 179, mb_input_lock_success <
+    ....
+  > 180, mb_input_lock_cancel <
+    ....
+  > 181, nav_blocked <
+    .... area / blocked /
+  > 182, nav_generate <
+    ....
+  > 183, achievement_info_loaded <
+    ....
+  > 184, spec_target_updated <
+    .... userid /
+  > 185, spec_mode_updated <
+    .... userid /
+  > 186, hltv_changed_mode <
+    .... oldmode / newmode / obs_target /
+  > 187, cs_game_disconnected <
+    ....
+  > 188, cs_win_panel_round <
+    .... show_timer_defend / show_timer_attack / timer_time / final_event / funfact_token / funfact_player / funfact_data1 / funfact_data2 / funfact_data3 /
+  > 189, cs_win_panel_match <
+    ....
+  > 190, cs_match_end_restart <
+    ....
+  > 191, cs_pre_restart <
+    ....
+  > 192, show_freezepanel <
+    .... victim / killer / hits_taken / damage_taken / hits_given / damage_given /
+  > 193, hide_freezepanel <
+    ....
+  > 194, freezecam_started <
+    ....
+  > 195, player_avenged_teammate <
+    .... avenger_id / avenged_player_id /
+  > 196, achievement_earned_local <
+    .... achievement / splitscreenplayer /
+  > 197, item_found <
+    .... player / quality / method / itemdef / itemid /
+  > 198, repost_xbox_achievements <
+    .... splitscreenplayer /
+  > 199, match_end_conditions <
+    .... frags / max_rounds / win_rounds / time /
+  > 200, round_mvp <
+    .... userid / reason / musickitmvps / nomusic /
+  > 201, show_survival_respawn_status <
+    .... loc_token / duration / userid /
+  > 202, client_disconnect <
+    ....
+  > 203, gg_player_levelup <
+    .... userid / weaponrank / weaponname /
+  > 204, ggtr_player_levelup <
+    .... userid / weaponrank / weaponname /
+  > 205, assassination_target_killed <
+    .... target / killer /
+  > 206, ggprogressive_player_levelup <
+    .... userid / weaponrank / weaponname /
+  > 207, gg_killed_enemy <
+    .... victimid / attackerid / dominated / revenge / bonus /
+  > 208, gg_final_weapon_achieved <
+    .... playerid /
+  > 209, gg_bonus_grenade_achieved <
+    .... userid /
+  > 210, switch_team <
+    .... numPlayers / numSpectators / avg_rank / numTSlotsFree / numCTSlotsFree /
+  > 211, gg_leader <
+    .... playerid /
+  > 212, gg_team_leader <
+    .... playerid /
+  > 213, gg_player_impending_upgrade <
+    .... userid /
+  > 214, write_profile_data <
+    ....
+  > 215, trial_time_expired <
+    .... slot /
+  > 216, update_matchmaking_stats <
+    ....
+  > 217, player_reset_vote <
+    .... userid / vote /
+  > 218, enable_restart_voting <
+    .... enable /
+  > 219, sfuievent <
+    .... action / data / slot /
+  > 220, start_vote <
+    .... userid / type / vote_parameter /
+  > 221, player_given_c4 <
+    .... userid /
+  > 222, player_become_ghost <
+    .... userid /
+  > 223, gg_reset_round_start_sounds <
+    .... userid /
+  > 224, tr_player_flashbanged <
+    .... userid /
+  > 225, tr_mark_complete <
+    .... complete /
+  > 226, tr_mark_best_time <
+    .... time /
+  > 227, tr_exit_hint_trigger <
+    ....
+  > 228, bot_takeover <
+    .... userid / botid / index /
+  > 229, tr_show_finish_msgbox <
+    .... userid /
+  > 230, tr_show_exit_msgbox <
+    .... userid /
+  > 231, reset_player_controls <
+    ....
+  > 232, jointeam_failed <
+    .... userid / reason /
+  > 233, teamchange_pending <
+    .... userid / toteam /
+  > 234, material_default_complete <
+    ....
+  > 235, cs_prev_next_spectator <
+    .... next /
+  > 237, nextlevel_changed <
+    .... nextlevel / mapgroup / skirmishmode /
+  > 238, seasoncoin_levelup <
+    .... player / category / rank /
+  > 239, tournament_reward <
+    .... defindex / totalrewards / accountid /
+  > 240, start_halftime <
+    ....
+  > 241, ammo_refill <
+    .... userid / success /
+  > 242, parachute_pickup <
+    .... userid /
+  > 243, parachute_deploy <
+    .... userid /
+  > 244, dronegun_attack <
+    .... userid /
+  > 245, drone_dispatched <
+    .... userid / priority / drone_dispatched /
+  > 246, loot_crate_visible <
+    .... userid / subject / type /
+  > 247, loot_crate_opened <
+    .... userid / type /
+  > 248, open_crate_instr <
+    .... userid / subject / type /
+  > 249, smoke_beacon_paradrop <
+    .... userid / paradrop /
+  > 250, survival_paradrop_spawn <
+    .... entityid /
+  > 251, survival_paradrop_break <
+    .... entityid /
+  > 252, drone_cargo_detached <
+    .... userid / cargo / delivered /
+  > 253, drone_above_roof <
+    .... userid / cargo /
+  > 254, choppers_incoming_warning <
+    .... global /
+  > 255, firstbombs_incoming_warning <
+    .... global /
+  > 256, dz_item_interaction <
+    .... userid / subject / type /
+  > 257, snowball_hit_player_face <
+    .... userid /
+  > 258, survival_teammate_respawn <
+    .... userid /
+  > 259, survival_no_respawns_warning <
+    .... userid /
+  > 260, survival_no_respawns_final <
+    .... userid /
+  > 261, player_ping <
+    .... userid / entityid / x / y / z /
+  > 262, player_ping_stop <
+    .... entityid /
+  > 263, guardian_wave_restart <
+    ....
+  > 264, hltv_status <
+    .... clients / slots / proxies / master / externaltotal / externallinked /
+  > 265, hltv_cameraman <
+    .... index /
+  > 266, hltv_rank_camera <
+    .... index / rank / target /
+  > 267, hltv_rank_entity <
+    .... index / rank / target /
+  > 268, hltv_fixed <
+    .... posx / posy / posz / theta / phi / offset / fov / target /
+  > 269, hltv_chase <
+    .... target1 / target2 / distance / theta / phi / inertia / ineye /
+  > 270, hltv_message <
+    .... text /
+  > 271, hltv_title <
+    .... text /
+  > 272, hltv_chat <
+    .... text /
+  > 273, hltv_changed_target <
+    .... mode / old_target / obs_target /

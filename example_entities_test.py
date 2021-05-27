@@ -35,7 +35,7 @@ def match_end(data):
 
 if __name__ == "__main__":
     starttime = timeit.default_timer()
-    analyse_demo('4675b31d-9b6c-4411-9997-156f72325684.dem')
+    analyse_demo('demos/faceit.dem')
     print("Time:", timeit.default_timer() - starttime)
 
 

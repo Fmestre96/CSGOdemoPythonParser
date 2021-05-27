@@ -14,7 +14,7 @@ round_timer = 0
 max_round_time = 115
 
 
-def analyze_demo(path='4675b31d-9b6c-4411-9997-156f72325684.dem'):
+def analyze_demo(path='demos/faceit.dem'):
 
     file = open(path, "rb")
     parser = dp.DemoParser(file, ent="NONE")

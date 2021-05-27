@@ -80,4 +80,4 @@ def get_one_entity(text):
 
 
 if __name__ == "__main__":
-    analyse_demo('4675b31d-9b6c-4411-9997-156f72325684.dem')
+    analyse_demo('demos/faceit.dem')

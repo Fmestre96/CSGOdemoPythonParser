@@ -16,16 +16,15 @@ class Demo:
         self.match_paused = False
         self.match_ended = False
         self.round_current = 1
-        self.max_players = 10
         self.tickrate = 0
         self.player_stats = dict()
         self.round_stats = dict()
         self.last_spawns = dict()
-        self.team_side_stats = self.empty_team_side_stats()
+        self.team_sides = self.empty_team_sides()
         self.all_chat = []
 
 
-    def save_to_file(self, ignoreData=None):
+    def save_to_file(self):
         hf.saveJson(self.get_stats())
 
     def get_stats(self):
@@ -45,7 +44,7 @@ class Demo:
             'round_stats':{
                 r: rs.toDict() for r, rs in self.round_stats.items()
             },
-            'team_sides': self.team_side_stats,
+            'team_sides': self.team_sides,
             'player_stats': {
                 v.name: v.toDict() for v in self.player_stats.values()
             },
@@ -61,10 +60,9 @@ class Demo:
         #Demo Start, Finnish
         self.parser.subscribe_to_event("parser_start", self.demo_started)
         self.parser.subscribe_to_event("cmd_dem_stop", self.demo_ended)
-        self.parser.subscribe_to_event("cmd_dem_stop", self.save_to_file)
 
         #Player Connects and Updates
-        #self.parser.subscribe_to_event("gevent_player_team", self.player_team)
+        self.parser.subscribe_to_event("gevent_player_team", self.player_team)
         self.parser.subscribe_to_event("parser_update_pinfo", self.update_pinfo)
     
         #Chat
@@ -81,6 +79,7 @@ class Demo:
         
         #Player based Stats - kills, assists, deaths, etc 
         self.parser.subscribe_to_event("gevent_player_spawn", self.player_spawn)
+        self.parser.subscribe_to_event("gevent_player_hurt", self.player_hurt)
         self.parser.subscribe_to_event("gevent_player_death", self.player_death)
         self.parser.subscribe_to_event("gevent_bomb_planted", self.bomb_planted)
         self.parser.subscribe_to_event("gevent_bomb_defused", self.bomb_defused)
@@ -94,7 +93,6 @@ class Demo:
         self.map = data.map_name
         self.match_started = False
         self.round_current = 1
-        self.max_players = 0
         self.player_stats = dict()
         self.tickrate = int(data.ticks / data.playback_time)
         if 'FACEIT' in data.server_name:
@@ -105,26 +103,37 @@ class Demo:
             self.service = 'ESEA'
 
 
-    def demo_ended (self, data):
+    def demo_ended(self, data):
         printVerbose("Demofile ended")
+        #for p in self.team_sides["3"]["players"]:
+        #    print("Player {} ({})".format(p, self.player_stats[p].name))
+        self.save_to_file()
 
 
 
     #-----------------------------------Connects-----------------------------------
 
     def player_team(self,data):
-        if data["team"] == 0:
+        if data["team"] == 0 or data["isbot"]:
             return
-        self.player_stats.get(data["userid"]).team = data["team"]
+        player_id = data["userid"]
+        player_xuid = self.player_stats[player_id].userinfo.xuid
+        old_team = data["oldteam"]
+        new_team = data["team"]
+        self.last_spawns[player_id] = new_team
 
+        #if player_xuid in self.team_sides[old_team]["players"]:
+        #    self.team_sides[old_team]["players"].remove(player_xuid)
 
+        #if player_xuid not in self.team_sides[new_team]["players"]:
+        #    self.team_sides[new_team]["players"].append(player_xuid)
 
     def update_pinfo(self, data):
         if data.guid != "BOT":
             exist = None
-            for x in self.player_stats.items():
-                if data.xuid == x[1].userinfo.xuid:
-                    exist = x[0]
+            for player_id, player_stats in self.player_stats.items():
+                if data.xuid == player_stats.userinfo.xuid:
+                    exist = player_id
                     break
             if exist:
                 self.player_stats[exist].update(data, ui=True)
@@ -133,16 +142,16 @@ class Demo:
                     self.player_stats.pop(exist)
             else:
                 self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
-            self.max_players = len(self.player_stats)
 
 
 
-    #--------------------------- Connects  ---------------------------
+    #--------------------------- Chat  ---------------------------
     def player_chat(self, data):
         self.all_chat.append(data)
     
     def server_chat(self, data):
         self.all_chat.append(data)
+
     #------------------------Timing based Stats - Round starts, freezetime and End ------------------------
 
     def begin_new_match(self, data):
@@ -150,7 +159,7 @@ class Demo:
         self.reset_player_stats_all()
         self.match_started = True
         self.round_current = 1
-        self.team_side_stats = self.empty_team_side_stats()
+        self.team_sides = self.empty_team_sides()
         self.round_stats = dict()
         self.round_start()
         
@@ -159,17 +168,21 @@ class Demo:
     def round_start(self, data=None):
         if not self.match_started:
             return
+        self.update_round()
         printVerbose("----------\nRound {} started".format(self.round_current))
         self.round_stats[self.round_current] = MyRound()
         for p, s in self.player_stats.items():
             s.round_stats[self.round_current] = SegmentStats()
+        self.assign_team_sides()
+        if self.is_swap_round():
+            self.swap_team_sides()
        
 
     def round_freezetime_end(self, data):
         if not self.match_started:
             return
         printVerbose("Round {} freezetime ended".format(self.round_current))
-        self.assign_team_sides()
+        
 
     def round_end (self, data):
         if not self.match_started:
@@ -177,14 +190,13 @@ class Demo:
         printVerbose("Round {} ended".format(self.round_current))
         if not data or not data.get("winner"):
             return
-        self.team_side_stats[data["winner"]]["round_wins"] += 1
+        self.team_sides[data["winner"]]["round_wins"] += 1
         
         
     def round_officially_ended (self, data):
         if not self.match_started:
             return
         printVerbose("Round {} officially ended".format(self.round_current))
-        self.round_current = self.team_side_stats[2]["round_wins"] + self.team_side_stats[3]["round_wins"] + 1
 
 
     def match_end(self, data):
@@ -192,9 +204,47 @@ class Demo:
 
     #-----------------------------------Demo Start, Finnish-----------------------------------
 
+    def player_hurt(self, data):
+        if not self.match_started:
+            return
+
+        #Get general info
+        round = self.round_current
+        r_stats = self.round_stats[round]
+        k_id = data["attacker"]
+        k = self.player_stats.get(k_id)
+        d_id = data["userid"]
+        d = self.player_stats.get(d_id)
+
+        if not k or not d:
+            return
+
+        #First Time damage from attacker to victim
+        if not k.round_stats[round].damage_report.get(d.name):
+            k.round_stats[round].damage_report[d.name] = {"damage_given":{},"damage_taken":{},"teamdamage":False,"kill":False}
+
+        if not d.round_stats[round].damage_report.get(k.name):
+            d.round_stats[round].damage_report[k.name] = {"damage_given":{},"damage_taken":{},"teamdamage":False,"kill":False}
+        
+        #Frist time damage from attacker to victim in a specific hitgroup
+        if not k.round_stats[round].damage_report[d.name]["damage_given"].get(data["hitgroup"]):
+            k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]] = {"hits":0, "dmg":0} 
+            d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]] = {"hits":0, "dmg":0} 
+        
+        damage = d.round_stats[round].health if data["dmg_health"] > d.round_stats[round].health else data["dmg_health"]
+        d.round_stats[round].health -= damage
+
+        #Add stats to damage_given to attacker || damage_taken to victim
+        k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["hits"] += 1
+        k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["dmg"] += damage
+        d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["hits"] += 1
+        d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["dmg"] += damage
+
     def player_death(self,data):
         if not self.match_started:
             return
+
+        #Get general info
         round = self.round_current
         r_stats = self.round_stats[round]
         k_id = data["attacker"]
@@ -218,6 +268,7 @@ class Demo:
         if data["headshot"]:
             k.round_stats[round].headshots += 1
 
+        #Increment Entry kills
         if not r_stats.first_kill_by_t and not r_stats.first_kill_by_ct:
             if k.round_stats[round].team==2:
                 k.round_stats[round].entries_t += 1
@@ -238,36 +289,65 @@ class Demo:
         if not data or not self.match_started or data["teamnum"] == 0:
             #print("scenario 1")
             return
+
+
+
+
+    def bomb_planted(self, data):
+            if not self.match_started:
+                return
+            player = self.player_stats.get(data["userid"])
+            round = self.round_current
+            r_stats = self.round_stats[round]
+
+            if not player:
+                return
+            player.round_stats[round].bomb_plants = 1
+            r_stats.bomb_planted = True
+            
+    def bomb_defused(self, data):
+        if not self.match_started:
+            return
         player = self.player_stats.get(data["userid"])
-        #if not player or not player.round_stats.get(self.round_current):
-            #print("scenario 2")
-        #    return
-        self.last_spawns[data["userid"]] = data["teamnum"]
-        #print("assigning {} to team {} in round {}".format(player.name, data["teamnum"], self.round_current))
-        #player.round_stats[self.round_current].team = data["teamnum"]
+        round = self.round_current
+        r_stats = self.round_stats[round]
+        if not player:
+            return
+        player.round_stats[round].bomb_defuses = 1
+        r_stats.bomb_defused = True
+            
 
 
 
-    def empty_team_side_stats(self):
-        team_side_stats =  {
+
+
+
+
+
+    def empty_team_sides(self):
+        team_sides =  {
             0:{
-                "name":"U",
+                "side":"U",
                 "round_wins":0,
+                "players":[]
             },
             1:{
-                "name":"S",
+                "side":"S",
                 "round_wins":0,
+                "players":[]
             },
             2: {
-                "name":"T",
+                "side":"T",
                 "round_wins":0,
+                "players":[]
             },
             3:{
-                "name":"CT",
-                "round_wins":0
+                "side":"CT",
+                "round_wins":0,
+                "players":[]
             }
         }
-        return team_side_stats
+        return team_sides
 
     def assign_team_sides(self):
         for player, side in self.last_spawns.items():
@@ -292,29 +372,46 @@ class Demo:
             return
         self.player_stats[player].round_stats[self.round_current] = SegmentStats()
 
-    def bomb_planted(self, data):
-        if not self.match_started:
-            return
-        player = self.player_stats.get(data["userid"])
-        round = self.round_current
-        r_stats = self.round_stats[round]
+    def get_player_by_xuid(self, xuid):
+        for p_id, player_details in self.player_stats.items():
+            if player_details.userinfo.xuid == xuid:
+                return p_id
+        return None
 
-        if not player:
-            return
-        player.round_stats[round].bomb_plants = 1
-        r_stats.bomb_planted = True
-        
-    def bomb_defused(self, data):
-        if not self.match_started:
-            return
-        player = self.player_stats.get(data["userid"])
+    def is_initial_side(self):
+        swap=False
         round = self.round_current
-        r_stats = self.round_stats[round]
-        if not player:
-            return
-        player.round_stats[round].bomb_defuses = 1
-        r_stats.bomb_defused = True
-        
+        if round < 30:
+            if round > 15:
+                swap = not swap
+        else:
+            swap = not swap
+            round -= 30
+            while round > 6:
+                round-=6
+                swap = not swap
+            if round > 2:
+                swap= not swap
+
+
+
+    def is_swap_round(self):
+        round = self.round_current - 1
+        if 0 < round < 30:
+            return round % 15 == 0
+        else:
+            round -= 30
+            return round % 3 == 0 and round % 6 != 0
+
+    def swap_team_sides(self):
+        self.team_sides[2]["round_wins"], self.team_sides[3]["round_wins"] = self.team_sides[3]["round_wins"], self.team_sides[2]["round_wins"]
+
+
+    def update_round(self):
+        try:
+            self.round_current = self.team_sides[2]["round_wins"] + self.team_sides[3]["round_wins"] + 1
+        except:
+            self.round_current = 1
 
 class MyRound:
     def __init__(self):
@@ -392,5 +489,5 @@ class SegmentStats:
 
 
 if __name__ == "__main__":
-    demoInstance = Demo('4675b31d-9b6c-4411-9997-156f72325684.dem')
+    demoInstance = Demo('demos/mm.dem')
     demoInstance.analyze()

@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 from google.protobuf import descriptor_pb2 as google_dot_protobuf_dot_descriptor__pb2
-from . import netmessages_pb2 as netmessages__pb2
+from . import NETMSG_pb2 as netmessages__pb2
 from . import cstrike15_gcmessages_pb2 as cstrike15__gcmessages__pb2
 
 

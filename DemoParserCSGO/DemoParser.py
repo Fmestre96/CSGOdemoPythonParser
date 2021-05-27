@@ -1,7 +1,7 @@
 import math
 import threading as t
 
-from .proto import netmessages_pb2, cstrike15_usermessages_pb2
+from .proto import NETMSG_pb2, cstrike15_usermessages_pb2
 
 from . import PrintStuff as p
 from . import consts as c
@@ -14,11 +14,11 @@ from .structures import DemoHeader, CommandHeader, StringTable, UserInfo, Server
 class DemoParser:
     def __init__(self, demo_file, ent="ALL"):
         self._buf = Bytebuffer(demo_file.read())
-        self._netmessages_pb2_dict = dict()
-        for item in netmessages_pb2.NET_Messages.items():
-            self._netmessages_pb2_dict.update({item[1]: item[0]})
-        for item in netmessages_pb2.SVC_Messages.items():
-            self._netmessages_pb2_dict.update({item[1]: item[0]})
+        self._NETMSG_pb2_dict = dict()
+        for item in NETMSG_pb2.NET_Messages.items():
+            self._NETMSG_pb2_dict.update({item[1]: item[0]})
+        for item in NETMSG_pb2.SVC_Messages.items():
+            self._NETMSG_pb2_dict.update({item[1]: item[0]})
         self._subscribers = dict()
         self._ut_set = set()
         self._ut_set.add("userinfo")
@@ -144,7 +144,7 @@ class DemoParser:
             size = self._buf.read_varint()
             data = self._buf.read(size)
             index += self._buf.varint_size(msg) + self._buf.varint_size(size) + size
-            self._sub_event("packet_" + self._netmessages_pb2_dict[msg], data)
+            self._sub_event("packet_" + self._NETMSG_pb2_dict[msg], data)
 
     def _handle_datatables(self):
         length = self._buf.read_int()
@@ -152,7 +152,7 @@ class DemoParser:
             v_type = self._buf.read_varint()
             size = self._buf.read_varint()
             data = self._buf.read(size)
-            table = netmessages_pb2.CSVCMsg_SendTable()
+            table = NETMSG_pb2.CSVCMsg_SendTable()
             table.ParseFromString(data)
             if table.is_end:
                 break
@@ -181,7 +181,7 @@ class DemoParser:
     # PACKET MESSAGES >
 
     def _mypkt_svc_CreateStringTable(self, data):
-        msg = netmessages_pb2.CSVCMsg_CreateStringTable()
+        msg = NETMSG_pb2.CSVCMsg_CreateStringTable()
         msg.ParseFromString(data)
         msg2 = StringTable(msg)
         uinfo = True if msg.name == "userinfo" else False
@@ -240,7 +240,7 @@ class DemoParser:
         # print("PB", sorted(self._pending_baselines_dict.keys()))
 
     def _mypkt_svc_UpdateStringTable(self, data):
-        msg = netmessages_pb2.CSVCMsg_UpdateStringTable()
+        msg = NETMSG_pb2.CSVCMsg_UpdateStringTable()
         msg.ParseFromString(data)
         obj = self._string_tables_list[msg.table_id]
         uinfo = True if obj.name == "userinfo" else False
@@ -249,7 +249,7 @@ class DemoParser:
                                       obj.uds, obj.udfs)
 
     def _mypkt_svc_GameEvent(self, data):
-        msg = netmessages_pb2.CSVCMsg_GameEvent()
+        msg = NETMSG_pb2.CSVCMsg_GameEvent()
         msg.ParseFromString(data)
         args = {}
         for i in range(len(msg.keys)):
@@ -277,7 +277,7 @@ class DemoParser:
         self._sub_event("gevent_" + self._game_events_dict[msg.eventid].name, args)
 
     def _mypkt_svc_PacketEntities(self, data):
-        msg = netmessages_pb2.CSVCMsg_PacketEntities()
+        msg = NETMSG_pb2.CSVCMsg_PacketEntities()
         msg.ParseFromString(data)
         buf = Bitbuffer(msg.entity_data)
         entity_id = -1
@@ -316,7 +316,7 @@ class DemoParser:
             entity.update(table_name, var_name, update["value"])
 
     def _mypkt_svc_GameEventList(self, data):
-        msg = netmessages_pb2.CSVCMsg_GameEventList()
+        msg = NETMSG_pb2.CSVCMsg_GameEventList()
         msg.ParseFromString(data)
         for event in msg.descriptors:
             self._game_events_dict.update({event.eventid: event})
@@ -324,7 +324,7 @@ class DemoParser:
 
     def _mypkt_svc_EmitUserMessage(self, data):
         
-        msg = netmessages_pb2.CSVCMsg_UserMessage()
+        msg = NETMSG_pb2.CSVCMsg_UserMessage()
         msg.ParseFromString(data)
         #5 = SayText
         #6 = SayText2

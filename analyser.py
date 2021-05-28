@@ -85,6 +85,7 @@ class Demo:
         
         #Player based Stats - kills, assists, deaths, etc 
         self.parser.subscribe_to_event("gevent_player_spawn", self.player_spawn)
+        self.parser.subscribe_to_event("gevent_weapon_fire", self.weapon_fire)
         self.parser.subscribe_to_event("gevent_player_hurt", self.player_hurt)
         self.parser.subscribe_to_event("gevent_player_death", self.player_death)
         self.parser.subscribe_to_event("gevent_bomb_planted", self.bomb_planted)
@@ -213,7 +214,23 @@ class Demo:
     def match_end(self, data):
         printVerbose("Match ended")
 
-    #-----------------------------------Demo Start, Finnish-----------------------------------
+    #-----------------------------------Player based Stats-----------------------------------
+
+
+    def player_spawn(self, data):
+        if not data or not self.match_started or data["teamnum"] == 0:
+            #print("scenario 1")
+            return
+
+    def weapon_fire(self, data):
+        if not self.match_started:
+            return
+        h_id = data["userid"]
+
+        round = self.round_current
+        h = self.player_stats.get(h_id)
+        h.round_stats[round].shots += 1
+
 
     def player_hurt(self, data):
         if not self.match_started:
@@ -251,10 +268,12 @@ class Demo:
             d.round_stats[round].damage_report[k.name]["damage_taken"]["kill"] = True
 
         #Add stats to damage_given to attacker || damage_taken to victim
+        k.round_stats[round].hits += 1
         k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["hits"] += 1
         k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["dmg"] += damage
         d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["hits"] += 1
         d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["dmg"] += damage
+        
 
         if k.round_stats[round].team != d.round_stats[round].team:
             k.round_stats[round].damage_given += damage
@@ -300,19 +319,9 @@ class Demo:
                 k.round_stats[round].entries_ct += 1
                 r_stats.first_kill_by_ct = True
 
-
-    def increment_kill(self, player):
-        if not player:
-            return
-        self.player_stats[player].round_stats[self.round_current].k += 1
-
-    def player_spawn(self, data):
-        if not data or not self.match_started or data["teamnum"] == 0:
-            #print("scenario 1")
-            return
-
-
-
+        if k.round_stats[round].team == d.round_stats[round].team:
+            k.round_stats[round].teamkills += 1
+            k.round_stats[round].k -= 2
 
     def bomb_planted(self, data):
             if not self.match_started:
@@ -543,5 +552,5 @@ class SegmentStats:
 
 
 if __name__ == "__main__":
-    demoInstance = Demo('demos/faceit.dem')
+    demoInstance = Demo('demos/mm.dem')
     demoInstance.analyze()

@@ -30,8 +30,14 @@ class Demo:
     def get_stats(self):
         #Convert SegmentStats into dics so I can __dict__ later
         for p, ps in self.player_stats.items():
-            self.player_stats[p].round_stats = {r: rs.__dict__ for r, rs in ps.round_stats.items()}
 
+            player_global_stats = SegmentStats()
+            for r, rs in ps.round_stats.items():
+                player_global_stats += rs
+
+            self.player_stats[p].round_stats = {r: rs.__dict__ for r, rs in ps.round_stats.items()}
+            self.player_stats[p].match_stats = player_global_stats.__dict__
+    
         stats = {
             'file_info': {
                 'path': self.path,
@@ -122,11 +128,12 @@ class Demo:
         new_team = data["team"]
         self.last_spawns[player_id] = new_team
 
-        #if player_xuid in self.team_sides[old_team]["players"]:
-        #    self.team_sides[old_team]["players"].remove(player_xuid)
+        if player_id in self.team_sides[old_team]["players"]:
+            self.team_sides[old_team]["players"].remove(player_id)
 
-        #if player_xuid not in self.team_sides[new_team]["players"]:
-        #    self.team_sides[new_team]["players"].append(player_xuid)
+        if player_id not in self.team_sides[new_team]["players"]:
+            self.team_sides[new_team]["players"].append(player_id)
+
 
     def update_pinfo(self, data):
         if data.guid != "BOT":
@@ -173,15 +180,16 @@ class Demo:
         self.round_stats[self.round_current] = MyRound()
         for p, s in self.player_stats.items():
             s.round_stats[self.round_current] = SegmentStats()
-        self.assign_team_sides()
         if self.is_swap_round():
             self.swap_team_sides()
-       
+
 
     def round_freezetime_end(self, data):
         if not self.match_started:
             return
+            
         printVerbose("Round {} freezetime ended".format(self.round_current))
+        self.assign_team_sides()
         
 
     def round_end (self, data):
@@ -190,6 +198,9 @@ class Demo:
         printVerbose("Round {} ended".format(self.round_current))
         if not data or not data.get("winner"):
             return
+        for ps in self.player_stats.values():
+            if ps.round_stats[self.round_current].team == data["winner"]:
+                ps.round_stats[self.round_current].round_wins += 1
         self.team_sides[data["winner"]]["round_wins"] += 1
         
         
@@ -234,11 +245,22 @@ class Demo:
         damage = d.round_stats[round].health if data["dmg_health"] > d.round_stats[round].health else data["dmg_health"]
         d.round_stats[round].health -= damage
 
+        #If it's a kill
+        if d.round_stats[round].health == 0:
+            k.round_stats[round].damage_report[d.name]["damage_given"]["kill"] = True
+            d.round_stats[round].damage_report[k.name]["damage_taken"]["kill"] = True
+
         #Add stats to damage_given to attacker || damage_taken to victim
         k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["hits"] += 1
         k.round_stats[round].damage_report[d.name]["damage_given"][data["hitgroup"]]["dmg"] += damage
         d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["hits"] += 1
         d.round_stats[round].damage_report[k.name]["damage_taken"][data["hitgroup"]]["dmg"] += damage
+
+        if k.round_stats[round].team != d.round_stats[round].team:
+            k.round_stats[round].damage_given += damage
+        else:
+            k.round_stats[round].damage_report[d.name]["damage_given"]["teamdamage"] = True
+            d.round_stats[round].damage_report[k.name]["damage_taken"]["teamdamage"] = True
 
     def player_death(self,data):
         if not self.match_started:
@@ -259,6 +281,7 @@ class Demo:
 
         k.round_stats[round].k += 1
         d.round_stats[round].d += 1
+
         
         # Increment Assist (if not flash)
         if a and not data["assistedflash"]:
@@ -276,8 +299,6 @@ class Demo:
             elif k.round_stats[round].team==3:
                 k.round_stats[round].entries_ct += 1
                 r_stats.first_kill_by_ct = True
-
-
 
 
     def increment_kill(self, player):
@@ -458,11 +479,11 @@ class SegmentStats:
     def __init__(self):
         self.team = 0
         self.k = 0
-        self.d = 0
         self.a = 0
+        self.d = 0
         self.bomb_defuses = 0
         self.bomb_plants = 0
-        self.damage_dealt = 0
+        self.damage_given = 0
         self.entries_t = 0
         self.entries_ct = 0
         self.shots = 0
@@ -474,7 +495,7 @@ class SegmentStats:
         self.teamkills = 0
         self.rws = 0
         self.health = 100
-        self.round_win = 0
+        self.round_wins = 0
         self.multikills = {
             "0k":0,
             "1k":0,
@@ -485,9 +506,42 @@ class SegmentStats:
         }
         self.damage_report = dict()
 
+    def __add__(self, b):
+        if isinstance(b, SegmentStats):
+            c = SegmentStats()
+            c.team = b.team
+            c.k = self.k + b.k
+            c.a = self.a + b.a
+            c.d = self.d + b.d
+            c.bomb_defuses = self.bomb_defuses + b.bomb_defuses
+            c.bomb_plants = self.bomb_plants + b.bomb_plants
+            c.damage_given = self.damage_given + b.damage_given
+            c.entries_t = self.entries_t + b.entries_t
+            c.entries_ct = self.entries_ct + b.entries_ct
+            c.shots = self.shots + b.shots
+            c.hits = self.hits + b.hits
+            c.headshots = self.headshots + b.headshots
+            c.money_spent = self.money_spent + b.money_spent
+            c.mvps = self.mvps + b.mvps
+            c.score = self.score + b.score
+            c.teamkills = self.teamkills + b.teamkills
+            c.rws = self.rws + b.rws
+            c.health = self.health + b.health
+            c.round_wins = self.round_wins + b.round_wins
+            c.multikills = {
+                "0k": self.multikills["0k"]+c.multikills["0k"],
+                "1k": self.multikills["1k"]+c.multikills["1k"],
+                "2k": self.multikills["2k"]+c.multikills["2k"],
+                "3k": self.multikills["3k"]+c.multikills["3k"],
+                "4k": self.multikills["4k"]+c.multikills["4k"],
+                "5k": self.multikills["5k"]+c.multikills["5k"],
+            }
+            return c
+        else:
+            return self
 
 
 
 if __name__ == "__main__":
-    demoInstance = Demo('demos/mm.dem')
+    demoInstance = Demo('demos/faceit.dem')
     demoInstance.analyze()

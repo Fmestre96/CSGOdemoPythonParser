@@ -137,8 +137,8 @@ def printDic(dic,ident=0):
     return sBuffer
 
 
-def saveJson(dic):
-    with open('data.json', 'w') as outfile:
+def saveJson(dic, filename='data.json'):
+    with open(filename, 'w') as outfile:
         json.dump(dic, outfile)
 
 

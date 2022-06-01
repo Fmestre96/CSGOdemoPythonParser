@@ -1,15 +1,15 @@
 import DemoParserCSGO.DemoParser as dp
 import DemoParserCSGO.PrintStuff as hf
 
-verbose = True
+verbose = False
 def printVerbose(s):
-    if verbose:
-        print(s)
+    	print(s) if verbose else None
 
 class Demo:
-    def __init__(self,path):
+    def __init__(self, file, filename="demo"):
         self.parser = None
-        self.path = path
+        self.file = file
+        self.filename = filename
         self.map = ""
         self.service = "MM"
         self.match_started = False
@@ -22,10 +22,11 @@ class Demo:
         self.last_spawns = dict()
         self.team_sides = self.empty_team_sides()
         self.all_chat = []
+        self.output = None
 
 
-    def save_to_file(self):
-        hf.saveJson(self.get_stats())
+    def save_to_file(self, output_folder=''):
+        hf.saveJson(self.output, filename='{}{}_stats.json'.format(output_folder, self.filename))
 
     def get_stats(self):
         #Convert SegmentStats into dics so I can __dict__ later
@@ -40,7 +41,7 @@ class Demo:
     
         stats = {
             'file_info': {
-                'path': self.path,
+                'filename': self.filename,
             },
             'demo_info': {
                 'service': self.service,
@@ -59,9 +60,8 @@ class Demo:
         return stats
 
 
-    def analyze(self):
-        file = open(self.path, "rb")
-        self.parser = dp.DemoParser(file, ent="NONE")
+    def analyse(self):
+        self.parser = dp.DemoParser(self.file, ent="NONE")
 
         #Demo Start, Finnish
         self.parser.subscribe_to_event("parser_start", self.demo_started)
@@ -114,8 +114,8 @@ class Demo:
         printVerbose("Demofile ended")
         #for p in self.team_sides["3"]["players"]:
         #    print("Player {} ({})".format(p, self.player_stats[p].name))
-        self.save_to_file()
 
+        self.output = self.get_stats()
 
 
     #-----------------------------------Connects-----------------------------------
@@ -137,19 +137,20 @@ class Demo:
 
 
     def update_pinfo(self, data):
-        if data.guid != "BOT":
-            exist = None
-            for player_id, player_stats in self.player_stats.items():
-                if data.xuid == player_stats.userinfo.xuid:
-                    exist = player_id
-                    break
-            if exist:
-                self.player_stats[exist].update(data, ui=True)
-                if exist != data.user_id:
-                    self.player_stats.update({data.user_id: self.player_stats[exist]})
-                    self.player_stats.pop(exist)
-            else:
-                self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
+
+        exist = None
+        for player_id, player_stats in self.player_stats.items():
+            if data.xuid == player_stats.userinfo.xuid:
+                exist = player_id
+                break
+
+        if exist:
+            self.player_stats[exist].update(data, ui=True)
+            if exist != data.user_id:
+                self.player_stats.update({data.user_id: self.player_stats[exist]})
+                self.player_stats.pop(exist)
+        else:
+            self.player_stats.update({data.user_id: MyPlayer(data, ui=True)})
 
 
 
@@ -552,5 +553,12 @@ class SegmentStats:
 
 
 if __name__ == "__main__":
-    demoInstance = Demo('demos/mm.dem')
-    demoInstance.analyze()
+    input_folder = "./demos/"
+    output_folder = "./data/"
+    filename = '1-8199f05a-e87a-49d7-949d-e7c11918b9ea.dem'
+
+    demo = open(input_folder+filename, "rb")
+    demoInstance = Demo(demo, filename)
+
+    demoInstance.analyse()
+    demoInstance.save_to_file(output_folder)

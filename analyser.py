@@ -143,7 +143,7 @@ class Demo:
             if data.xuid == player_stats.userinfo.xuid:
                 exist = player_id
                 break
-
+            
         if exist:
             self.player_stats[exist].update(data, ui=True)
             if exist != data.user_id:
@@ -201,7 +201,9 @@ class Demo:
         if not data or not data.get("winner"):
             return
         for ps in self.player_stats.values():
-            if ps.round_stats[self.round_current].team == data["winner"]:
+            if(self.round_current not in ps.round_stats):
+                continue
+            if self.round_current not in ps.round_stats and ps.round_stats[self.round_current].team == data["winner"]:
                 ps.round_stats[self.round_current].round_wins += 1
         self.team_sides[data["winner"]]["round_wins"] += 1
         

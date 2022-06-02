@@ -4,5 +4,7 @@ DemoParserCSGO/__pycache__/
 *.pyc
 data.json
 data.txt
-data/
-demos/
+data/*.txt
+data/*.json
+demos/*.dem
+demos/*.dem.gz

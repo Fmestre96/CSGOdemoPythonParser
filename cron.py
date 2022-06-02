@@ -84,5 +84,5 @@ if __name__ == '__main__':
             analyse_next_in_queue()
 
         print(matches_in_queue)
-        time.sleep(15)
+        time.sleep(30)
         sleeps_performed += 1
